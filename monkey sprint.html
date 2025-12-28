@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monkey City Sprint - Infinite Runner Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%);
+            margin: 0 auto;
+        }
+
+        /* Splash Screen */
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #FF6B6B 0%, #FFD93D 50%, #6BCB77 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        #splashScreen.hide {
+            animation: fadeOut 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .splash-content {
+            text-align: center;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .splash-title {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        .splash-subtitle {
+            font-size: 1.5em;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .splash-button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid white;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            backdrop-filter: blur(10px);
+        }
+
+        .splash-button:hover {
+            background: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        /* Game Over Modal */
+        #gameOverModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 15px;
+            z-index: 999;
+            display: none;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            min-width: 300px;
+        }
+
+        #gameOverModal.show {
+            display: block;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translate(-50%, -30%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, -50%);
+                opacity: 1;
+            }
+        }
+
+        .game-over-title {
+            font-size: 2.5em;
+            color: #FF6B6B;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .game-over-score {
+            font-size: 1.5em;
+            color: #FFD93D;
+            margin-bottom: 30px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .modal-button {
+            padding: 12px 30px;
+            font-size: 1.1em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .modal-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* HUD */
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .hud-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .hud-label {
+            font-size: 0.8em;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hud-value {
+            font-size: 1.5em;
+            color: #FFD93D;
+            margin-top: 5px;
+        }
+
+        /* Game Container */
+        #gameContainer {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pixel-art-effect {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div id="splashScreen">
+        <div class="splash-content">
+            <div class="splash-title">🐵 MONKEY CITY SPRINT 🐵</div>
+            <div class="splash-subtitle">Run through the urban jungle and avoid obstacles!</div>
+            <button class="splash-button" onclick="startGame()">Play Now</button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameOverModal">
+        <div class="game-over-title">GAME OVER!</div>
+        <div class="game-over-score">
+            <div>Score: <span id="finalScore">0</span></div>
+        </div>
+        <div class="modal-buttons">
+            <button class="modal-button" onclick="restartGame()">Play Again</button>
+            <button class="modal-button" onclick="returnToSplash()">Main Menu</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-panel">
+            <div class="hud-label">Score</div>
+            <div class="hud-value" id="scoreDisplay">0</div>
+        </div>
+        <div class="hud-panel">
+            <div class="hud-label">Distance</div>
+            <div class="hud-value" id="distanceDisplay">0m</div>
+        </div>
+        <div class="hud-panel">
+            <div class="hud-label">High Score</div>
+            <div class="hud-value" id="highScoreDisplay">0</div>
+        </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // Game Configuration
+        const CONFIG = {
+            CANVAS_WIDTH: 1280,
+            CANVAS_HEIGHT: 720,
+            GRAVITY: 0.6,
+            MONKEY_SIZE: 40,
+            GROUND_HEIGHT: 100,
+            INITIAL_SPEED: 6,
+            MAX_SPEED: 12,
+            SPEED_INCREMENT: 0.001,
+        };
+
+        // Game State
+        let gameState = {
+            isRunning: false,
+            isPaused: false,
+            score: 0,
+            distance: 0,
+            highScore: localStorage.getItem('monkeyCityHighScore') || 0,
+            gameSpeed: CONFIG.INITIAL_SPEED,
+        };
+
+        // Canvas setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = CONFIG.CANVAS_WIDTH;
+        canvas.height = CONFIG.CANVAS_HEIGHT;
+
+        // Monkey Object
+        const monkey = {
+            x: 100,
+            y: CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT - CONFIG.MONKEY_SIZE,
+            width: CONFIG.MONKEY_SIZE,
+            height: CONFIG.MONKEY_SIZE,
+            velocityY: 0,
+            isJumping: false,
+            jumpPower: -15,
+            color: '#8B4513',
+            frame: 0,
+            animationCounter: 0,
+
+            update() {
+                // Apply gravity
+                this.velocityY += CONFIG.GRAVITY;
+                this.y += this.velocityY;
+
+                // Ground collision
+                const groundY = CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT - this.height;
+                if (this.y >= groundY) {
+                    this.y = groundY;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                }
+
+                // Animation
+                this.animationCounter++;
+                if (this.animationCounter > 5) {
+                    this.frame = (this.frame + 1) % 4;
+                    this.animationCounter = 0;
+                }
+            },
+
+            jump() {
+                if (!this.isJumping) {
+                    this.velocityY = this.jumpPower;
+                    this.isJumping = true;
+                }
+            },
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+
+                // Draw monkey body
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+
+                // Draw monkey head
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(0, -this.height / 3, this.width / 2.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw eyes
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(-this.width / 5, -this.height / 3, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.width / 5, -this.height / 3, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw pupils
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(-this.width / 5, -this.height / 3, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(this.width / 5, -this.height / 3, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw mouth
+                ctx.strokeStyle = 'black';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(0, -this.height / 5, this.width / 4, 0, Math.PI);
+                ctx.stroke();
+
+                // Draw arms (animated)
+                const armOffset = Math.sin(this.animationCounter / 2) * 5;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(-this.width / 2 - 5, -this.height / 4 + armOffset, 5, this.width / 3);
+                ctx.fillRect(this.width / 2, -this.height / 4 - armOffset, 5, this.width / 3);
+
+                ctx.restore();
+            }
+        };
+
+        // Obstacles
+        class Obstacle {
+            constructor() {
+                this.width = 40 + Math.random() * 30;
+                this.height = 40 + Math.random() * 40;
+                this.x = CONFIG.CANVAS_WIDTH;
+                this.y = CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT - this.height;
+                this.type = Math.random() > 0.5 ? 'box' : 'spike';
+                this.color = this.type === 'box' ? '#FF6B6B' : '#FFD93D';
+            }
+
+            update() {
+                this.x -= gameState.gameSpeed;
+            }
+
+            draw(ctx) {
+                if (this.type === 'box') {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    // Add border
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(this.x, this.y, this.width, this.height);
+                } else {
+                    // Draw spike
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x + this.width / 2, this.y);
+                    ctx.lineTo(this.x, this.y + this.height);
+                    ctx.lineTo(this.x + this.width, this.y + this.height);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            isOffScreen() {
+                return this.x + this.width < 0;
+            }
+
+            collidesWith(monkey) {
+                return !(monkey.x + monkey.width < this.x ||
+                        monkey.x > this.x + this.width ||
+                        monkey.y + monkey.height < this.y ||
+                        monkey.y > this.y + this.height);
+            }
+        }
+
+        // Parallax Background
+        class ParallaxLayer {
+            constructor(speed, color, height) {
+                this.speed = speed;
+                this.color = color;
+                this.height = height;
+                this.offset = 0;
+            }
+
+            update() {
+                this.offset -= gameState.gameSpeed * this.speed;
+                if (this.offset < -CONFIG.CANVAS_WIDTH) {
+                    this.offset = 0;
+                }
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.offset, CONFIG.CANVAS_HEIGHT - this.height, CONFIG.CANVAS_WIDTH, this.height);
+                ctx.fillRect(this.offset + CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT - this.height, CONFIG.CANVAS_WIDTH, this.height);
+            }
+        }
+
+        // Game Objects
+        let obstacles = [];
+        let parallaxLayers = [
+            new ParallaxLayer(0.3, '#D4A574', 80),  // Sand
+            new ParallaxLayer(0.5, '#A0826D', 40),  // Stone
+            new ParallaxLayer(0.8, '#8B6F47', 20),  // Dirt
+        ];
+
+        // Input Handling
+        document.addEventListener('keydown', (e) => {
+            if (gameState.isRunning && (e.code === 'Space' || e.code === 'ArrowUp')) {
+                monkey.jump();
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('click', () => {
+            if (gameState.isRunning) {
+                monkey.jump();
+            }
+        });
+
+        document.addEventListener('touchstart', () => {
+            if (gameState.isRunning) {
+                monkey.jump();
+            }
+        });
+
+        // Game Functions
+        function startGame() {
+            document.getElementById('splashScreen').classList.add('hide');
+            gameState.isRunning = true;
+            gameState.score = 0;
+            gameState.distance = 0;
+            gameState.gameSpeed = CONFIG.INITIAL_SPEED;
+            obstacles = [];
+            monkey.y = CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT - CONFIG.MONKEY_SIZE;
+            monkey.velocityY = 0;
+            gameLoop();
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverModal').classList.remove('show');
+            gameState.isRunning = true;
+            gameState.score = 0;
+            gameState.distance = 0;
+            gameState.gameSpeed = CONFIG.INITIAL_SPEED;
+            obstacles = [];
+            monkey.y = CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT - CONFIG.MONKEY_SIZE;
+            monkey.velocityY = 0;
+            gameLoop();
+        }
+
+        function returnToSplash() {
+            document.getElementById('gameOverModal').classList.remove('show');
+            document.getElementById('splashScreen').classList.remove('hide');
+            gameState.isRunning = false;
+        }
+
+        function gameOver() {
+            gameState.isRunning = false;
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('monkeyCityHighScore', gameState.highScore);
+                document.getElementById('highScoreDisplay').textContent = gameState.highScore;
+            }
+            document.getElementById('finalScore').textContent = gameState.score;
+            document.getElementById('gameOverModal').classList.add('show');
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreDisplay').textContent = gameState.score;
+            document.getElementById('distanceDisplay').textContent = Math.floor(gameState.distance) + 'm';
+            document.getElementById('highScoreDisplay').textContent = gameState.highScore;
+        }
+
+        let spawnTimer = 0;
+        const SPAWN_RATE = 80;
+
+        function gameLoop() {
+            if (!gameState.isRunning) return;
+
+            // Update
+            monkey.update();
+            
+            // Spawn obstacles
+            spawnTimer++;
+            if (spawnTimer > SPAWN_RATE - (gameState.gameSpeed / CONFIG.INITIAL_SPEED) * 20) {
+                obstacles.push(new Obstacle());
+                spawnTimer = 0;
+            }
+
+            // Update obstacles
+            obstacles = obstacles.filter(obs => !obs.isOffScreen());
+            obstacles.forEach(obs => {
+                obs.update();
+                if (obs.collidesWith(monkey)) {
+                    gameOver();
+                    return;
+                }
+            });
+
+            // Update parallax
+            parallaxLayers.forEach(layer => layer.update());
+
+            // Increase speed and score
+            gameState.gameSpeed = Math.min(CONFIG.MAX_SPEED, CONFIG.INITIAL_SPEED + gameState.distance * CONFIG.SPEED_INCREMENT);
+            gameState.distance += gameState.gameSpeed / 100;
+            gameState.score = Math.floor(gameState.distance);
+
+            // Update HUD
+            updateHUD();
+
+            // Draw
+            draw();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function draw() {
+            // Draw sky
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+
+            // Draw clouds
+            drawClouds();
+
+            // Draw parallax layers
+            parallaxLayers.forEach(layer => layer.draw(ctx));
+
+            // Draw ground
+            ctx.fillStyle = '#90EE90';
+            ctx.fillRect(0, CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT, CONFIG.CANVAS_WIDTH, CONFIG.GROUND_HEIGHT);
+
+            // Draw grass line
+            ctx.strokeStyle = '#7CCD7C';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT);
+            ctx.lineTo(CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT - CONFIG.GROUND_HEIGHT);
+            ctx.stroke();
+
+            // Draw obstacles
+            obstacles.forEach(obs => obs.draw(ctx));
+
+            // Draw monkey
+            monkey.draw(ctx);
+
+            // Draw speed indicator
+            drawSpeedIndicator();
+        }
+
+        let cloudOffsets = [
+            { x: 100, y: 80, speed: 0.5 },
+            { x: 400, y: 150, speed: 0.3 },
+            { x: 800, y: 100, speed: 0.4 },
+        ];
+
+        function drawClouds() {
+            cloudOffsets.forEach(cloud => {
+                cloud.x -= cloud.speed * gameState.gameSpeed * 0.2;
+                if (cloud.x < -100) {
+                    cloud.x = CONFIG.CANVAS_WIDTH + 50;
+                }
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(cloud.x, cloud.y, 30, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 30, cloud.y, 35, 0, Math.PI * 2);
+                ctx.arc(cloud.x + 60, cloud.y, 30, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawSpeedIndicator() {
+            const speedPercent = (gameState.gameSpeed - CONFIG.INITIAL_SPEED) / (CONFIG.MAX_SPEED - CONFIG.INITIAL_SPEED);
+            const barWidth = 100;
+            const barHeight = 8;
+            const barX = CONFIG.CANVAS_WIDTH - barWidth - 30;
+            const barY = CONFIG.CANVAS_HEIGHT - 50;
+
+            // Background
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Speed bar
+            const gradient = ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+            gradient.addColorStop(0, '#6BCB77');
+            gradient.addColorStop(0.5, '#FFD93D');
+            gradient.addColorStop(1, '#FF6B6B');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(barX, barY, barWidth * speedPercent, barHeight);
+
+            // Border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+
+        // Initialize high score display
+        document.getElementById('highScoreDisplay').textContent = gameState.highScore;
+    </script>
+</body>
+</html>
